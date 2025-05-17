@@ -1,21 +1,12 @@
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error, HttpMessage, HttpResponse,
+    Error, HttpMessage,
 };
 use futures::future::{ready, LocalBoxFuture, Ready};
-use serde::Serialize;
 
 // Struct to hold the validated token
 #[derive(Debug, Clone)]
 pub struct FigmaToken(pub String);
-
-// Response format for errors
-#[derive(Serialize)]
-struct ApiResponse {
-    message: String,
-    status: String,
-    data: Option<serde_json::Value>,
-}
 
 // The middleware struct
 pub struct FigmaTokenMiddleware;

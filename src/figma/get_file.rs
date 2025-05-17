@@ -32,7 +32,8 @@ pub async fn get_file(
 ) -> impl Responder {
     // Get the validated token from request extensions
     // The token is guaranteed to exist because of the middleware
-    let figma_token = req.extensions().get::<FigmaToken>().unwrap();
+    let extensions = req.extensions(); // Create longer-lived borrow
+    let figma_token = extensions.get::<FigmaToken>().unwrap();
     let token = &figma_token.0;
 
     // Get the file_key parameter
