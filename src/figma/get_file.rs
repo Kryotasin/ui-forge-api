@@ -1,7 +1,8 @@
-use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder, HttpMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use reqwest::Client;
+use crate::auth::FigmaToken;
 
 // Struct for query parameters
 #[derive(Deserialize)]
@@ -29,22 +30,10 @@ pub async fn get_file(
     req: HttpRequest,
     query: web::Query<FileParams>,
 ) -> impl Responder {
-    // Check for X-Figma-Token header
-    let token = match req.headers().get("X-Figma-Token") {
-        Some(token_header) => match token_header.to_str() {
-            Ok(token_str) => token_str.to_string(),
-            Err(_) => return HttpResponse::BadRequest().json(ApiResponse {
-                message: "Invalid token format".to_string(),
-                status: "error".to_string(),
-                data: None,
-            }),
-        },
-        None => return HttpResponse::Unauthorized().json(ApiResponse {
-            message: "Missing X-Figma-Token header".to_string(),
-            status: "error".to_string(),
-            data: None,
-        }),
-    };
+    // Get the validated token from request extensions
+    // The token is guaranteed to exist because of the middleware
+    let figma_token = req.extensions().get::<FigmaToken>().unwrap();
+    let token = &figma_token.0;
 
     // Get the file_key parameter
     let file_key = match &query.file_key {
@@ -87,7 +76,7 @@ pub async fn get_file(
     let response = match client
         .get(url)
         .query(&params)
-        .header("X-Figma-Token", &token)
+        .header("X-Figma-Token", token)
         .send()
         .await {
             Ok(resp) => resp,
