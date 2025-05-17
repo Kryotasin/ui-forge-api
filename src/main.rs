@@ -1,8 +1,8 @@
 use actix_web::{App, HttpServer, web};
 use std::io;
 
-// Import the Figma module
 mod figma;
+mod mongo; 
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -15,6 +15,8 @@ async fn main() -> io::Result<()> {
                 web::scope("/api")
                     // Mount the Figma module routes under /api/figma
                     .service(web::scope("/figma").configure(figma::routes::config))
+                    // Mount the MongoDB module routes under /api/mongo
+                    .service(web::scope("/mongo").configure(mongo::routes::config)) // Assuming you have a mongo/routes.rs
             )
     })
     .bind(("127.0.0.1", 8080))?
