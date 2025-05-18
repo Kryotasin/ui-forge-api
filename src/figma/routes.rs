@@ -1,9 +1,10 @@
-// Updated routes.rs - using imports instead of module declarations
 use actix_web::web;
-use crate::figma::echo;
-use crate::figma::get_file;
+use crate::figma::{get_file, components}; // Import the new components module
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_file::get_file)
-       .service(echo::echo);
+       // Add the new endpoints for accessing structured data
+       .service(components::list_components)
+       .service(components::list_styles)
+       .service(components::get_document);
 }

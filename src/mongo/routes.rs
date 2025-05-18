@@ -30,6 +30,16 @@ async fn list_databases(db: web::Data<MongoDb>) -> impl Responder {
     }
 }
 
+#[post("/add_figma_page")]
+async fn add_figma_page(form: web::Form<User>) -> HttpResponse {
+    let collection = db.client.database(env::var("MONGODB_DATABASE")).collection('figma_pages');
+    let result = collection.insert_one(form.into_inner()).await;
+    match result {
+        Ok(_) => HttpResponse::Ok().body("Page added"),
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(list_databases);
 }

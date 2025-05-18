@@ -37,7 +37,7 @@ impl MongoDb {
         let db_name = env::var("MONGODB_DATABASE")
             .unwrap_or_else(|_| "ui_forge".to_string());
 
-        println!("Connecting to MongoDB with URI: {}", mongo_uri.replace(&env::var("MONGODB_PASSWORD").unwrap_or_default(), "****"));
+        println!("Connecting to MongoDB...");
 
         // Configure and create the client with Atlas settings
         let mut client_options = ClientOptions::parse(mongo_uri).await?;
