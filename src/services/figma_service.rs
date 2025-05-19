@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use reqwest::Client;
 use chrono::Utc;
 use crate::models::figma::{
-    FigmaFile, FigmaFileQuery, FigmaData, FigmaDocument, 
-    FigmaComponent, FigmaComponentSet, FigmaStyle, FigmaNode
+    FigmaFile, FigmaFileQuery, FigmaData,
+    FigmaComponent, FigmaComponentSet, FigmaStyle
 };
 use crate::repositories::figma_repo::FigmaRepository;
 use std::sync::Arc;

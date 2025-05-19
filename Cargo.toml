@@ -11,3 +11,13 @@ reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 mongodb = "3.2.3"
 futures = "0.3.31"
+async-trait = "0.1.73"
+# Better error handling
+thiserror = "1.0.47"
+# For timestamps and date handling
+chrono = { version = "0.4.26", features = ["serde"] }
+# For hashing file IDs
+sha2 = "0.10.7"
+hex = "0.4.3"
+# BSON helpers for DateTime serialization
+bson = { version = "2.7.0", features = ["chrono-0_4"] }

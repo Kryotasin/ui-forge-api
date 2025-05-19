@@ -1,120 +1,132 @@
-use actix_web::{get, web, HttpResponse, Responder};
-use crate::models::figma::ApiResponse;
-use crate::services::figma_service::FigmaService;
+use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use reqwest::Client;
 
-// GET handler to list components from a file
-#[get("/file/{file_id}/components")]
-pub async fn list_components(
-    path: web::Path<String>,
-    figma_service: web::Data<dyn FigmaService>,
-) -> impl Responder {
-    let file_id = path.into_inner();
-    
-    // Get the file from the database
-    match figma_service.get_file_by_id(&file_id).await {
-        Ok(Some(file)) => {
-            // Extract components
-            let components = file.data.components;
-            HttpResponse::Ok().json(ApiResponse {
-                message: format!("Retrieved {} components from file {}", components.len(), file_id),
-                status: "success".to_string(),
-                data: Some(components),
-            })
-        },
-        Ok(None) => {
-            HttpResponse::NotFound().json(ApiResponse {
-                message: format!("File with ID {} not found", file_id),
-                status: "error".to_string(),
-                data: None::<()>,
-            })
-        },
-        Err(e) => {
-            HttpResponse::InternalServerError().json(ApiResponse {
-                message: format!("Failed to retrieve file: {}", e),
-                status: "error".to_string(),
-                data: None::<()>,
-            })
-        }
-    }
+// Struct for query parameters
+#[derive(Deserialize)]
+pub struct FileParams {
+    file_key: Option<String>,
+    version: Option<String>,
+    ids: Option<String>,           
+    depth: Option<String>,         
+    geometry: Option<String>,      
+    plugin_data: Option<String>,   
+    branch_data: Option<String>,   
 }
 
-// GET handler to list styles from a file
-#[get("/file/{file_id}/styles")]
-pub async fn list_styles(
-    path: web::Path<String>,
-    figma_service: web::Data<dyn FigmaService>,
-) -> impl Responder {
-    let file_id = path.into_inner();
-    
-    // Get the file from the database
-    match figma_service.get_file_by_id(&file_id).await {
-        Ok(Some(file)) => {
-            // Extract styles (convert HashMap to Vec for easier JSON serialization)
-            let styles = file.data.styles.into_values().collect::<Vec<_>>();
-            HttpResponse::Ok().json(ApiResponse {
-                message: format!("Retrieved {} styles from file {}", styles.len(), file_id),
-                status: "success".to_string(),
-                data: Some(styles),
-            })
-        },
-        Ok(None) => {
-            HttpResponse::NotFound().json(ApiResponse {
-                message: format!("File with ID {} not found", file_id),
-                status: "error".to_string(),
-                data: None::<()>,
-            })
-        },
-        Err(e) => {
-            HttpResponse::InternalServerError().json(ApiResponse {
-                message: format!("Failed to retrieve file: {}", e),
-                status: "error".to_string(),
-                data: None::<()>,
-            })
-        }
-    }
+// Struct for returning response
+#[derive(Serialize)]
+pub struct ApiResponse {
+    message: String,
+    status: String,
+    data: Option<serde_json::Value>,
 }
 
-// GET handler to get document structure
-#[get("/file/{file_id}/document")]
-pub async fn get_document(
-    path: web::Path<String>,
-    figma_service: web::Data<dyn FigmaService>,
+// GET handler that makes an actual request to Figma API
+#[get("/getFile")]
+pub async fn get_file(
+    req: HttpRequest,
+    query: web::Query<FileParams>,
 ) -> impl Responder {
-    let file_id = path.into_inner();
-    
-    // Get the file from the database
-    match figma_service.get_file_by_id(&file_id).await {
-        Ok(Some(file)) => {
-            // Extract document
-            match file.data.document {
-                Some(document) => {
-                    HttpResponse::Ok().json(ApiResponse {
-                        message: format!("Retrieved document from file {}", file_id),
-                        status: "success".to_string(),
-                        data: Some(document),
-                    })
-                },
-                None => {
-                    HttpResponse::NotFound().json(ApiResponse {
-                        message: format!("No document found in file {}", file_id),
-                        status: "error".to_string(),
-                        data: None::<()>,
-                    })
-                }
-            }
-        },
-        Ok(None) => {
-            HttpResponse::NotFound().json(ApiResponse {
-                message: format!("File with ID {} not found", file_id),
+    // Check for X-Figma-Token header
+    let token = match req.headers().get("X-Figma-Token") {
+        Some(token_header) => match token_header.to_str() {
+            Ok(token_str) => token_str.to_string(),
+            Err(_) => return HttpResponse::BadRequest().json(ApiResponse {
+                message: "Invalid token format".to_string(),
                 status: "error".to_string(),
-                data: None::<()>,
+                data: None,
+            }),
+        },
+        None => return HttpResponse::Unauthorized().json(ApiResponse {
+            message: "Missing X-Figma-Token header".to_string(),
+            status: "error".to_string(),
+            data: None,
+        }),
+    };
+
+    // Get the file_key parameter
+    let file_key = match &query.file_key {
+        Some(id) => id.clone(),
+        None => return HttpResponse::BadRequest().json(ApiResponse {
+            message: "Missing file_key parameter".to_string(),
+            status: "error".to_string(),
+            data: None,
+        }),
+    };
+
+    // Create HTTP client
+    let client = Client::new();
+    
+    // Build the Figma API URL
+    let url = format!("https://api.figma.com/v1/files/{}", file_key);
+    
+    // Build query parameters
+    let mut params = HashMap::new();
+    if let Some(version) = &query.version {
+        params.insert("version", version.clone());
+    }
+    if let Some(ids) = &query.ids {
+        params.insert("ids", ids.clone());
+    }
+    if let Some(depth) = &query.depth {
+        params.insert("depth", depth.clone());
+    }
+    if let Some(geometry) = &query.geometry {
+        params.insert("geometry", geometry.clone());
+    }
+    if let Some(plugin_data) = &query.plugin_data {
+        params.insert("plugin_data", plugin_data.clone());
+    }
+    if let Some(branch_data) = &query.branch_data {
+        params.insert("branch_data", branch_data.clone());
+    }
+
+    // Make the API request to Figma
+    let response = match client
+        .get(url)
+        .query(&params)
+        .header("X-Figma-Token", &token)
+        .send()
+        .await {
+            Ok(resp) => resp,
+            Err(e) => return HttpResponse::InternalServerError().json(ApiResponse {
+                message: format!("Failed to call Figma API: {}", e),
+                status: "error".to_string(),
+                data: None,
+            }),
+        };
+
+    // Check status code
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = match response.text().await {
+            Ok(text) => text,
+            Err(_) => "Could not read error response".to_string(),
+        };
+        
+        return HttpResponse::build(status).json(ApiResponse {
+            message: format!("Figma API error: {}", error_text),
+            status: "error".to_string(),
+            data: None,
+        });
+    }
+
+    // Parse JSON response
+    match response.json::<serde_json::Value>().await {
+        Ok(json_data) => {
+            HttpResponse::Ok().json(ApiResponse {
+                message: format!("Successfully retrieved Figma file: {}", file_key),
+                status: "success".to_string(),
+                data: Some(json_data),
             })
         },
         Err(e) => {
             HttpResponse::InternalServerError().json(ApiResponse {
-                message: format!("Failed to retrieve file: {}", e),
+                message: format!("Failed to parse Figma API response: {}", e),
                 status: "error".to_string(),
-                data: None::<()>,
+                data: None,
             })
         }
     }

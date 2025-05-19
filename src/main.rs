@@ -1,12 +1,14 @@
 use actix_web::{App, HttpServer, web};
 use std::io;
+use actix_web::middleware::Logger;
 
 mod auth;
-mod db;    // New module for database connections
+mod db;
 mod figma;
 mod mongo; 
 mod models;
 mod services;
+mod repositories;
 
 use auth::middleware::FigmaTokenMiddleware;
 
@@ -28,18 +30,11 @@ async fn main() -> io::Result<()> {
     
     HttpServer::new(move || {
         App::new()
-            // Add MongoDB client to application state
+            .wrap(Logger::default())
             .app_data(web::Data::new(mongodb.clone()))
-            // Configure API routes under /api prefix
             .service(
                 web::scope("/api")
-                    // Mount the Figma module routes under /api/figma with auth middleware
-                    .service(
-                        web::scope("/figma")
-                            .wrap(FigmaTokenMiddleware::new())
-                            .configure(figma::routes::config)
-                    )
-                    // Mount the MongoDB module routes under /api/mongo
+                    .service(web::scope("/figma").configure(figma::routes::config))
                     .service(web::scope("/mongo").configure(mongo::routes::config))
             )
     })
