@@ -5,6 +5,8 @@ mod auth;
 mod db;    // New module for database connections
 mod figma;
 mod mongo; 
+mod models;
+mod services;
 
 use auth::middleware::FigmaTokenMiddleware;
 
