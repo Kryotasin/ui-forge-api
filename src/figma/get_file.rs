@@ -59,34 +59,38 @@ pub async fn get_file(
     // Create HTTP client
     let client = Client::new();
     
-    // Build the Figma API URL
-    let url = format!("https://api.figma.com/v1/files/{}", file_key);
+    // Build the Figma API URL with query parameters
+    let mut url = format!("https://api.figma.com/v1/files/{}", file_key);
     
-    // Build query parameters
-    let mut params = HashMap::new();
+    // Add query parameters directly to URL if they exist
     if let Some(version) = &query.version {
-        params.insert("version", version.clone());
+        url.push_str(&format!("?version={}", version));
     }
     if let Some(ids) = &query.ids {
-        params.insert("ids", ids.clone());
+        url.push_str(&format!("{}ids={}", if url.contains('?') { "&" } else { "?" }, ids));
     }
     if let Some(depth) = &query.depth {
-        params.insert("depth", depth.clone());
+        url.push_str(&format!("{}depth={}", if url.contains('?') { "&" } else { "?" }, depth));
     }
     if let Some(geometry) = &query.geometry {
-        params.insert("geometry", geometry.clone());
+        url.push_str(&format!("{}geometry={}", if url.contains('?') { "&" } else { "?" }, geometry));
     }
     if let Some(plugin_data) = &query.plugin_data {
-        params.insert("plugin_data", plugin_data.clone());
+        url.push_str(&format!("{}plugin_data={}", if url.contains('?') { "&" } else { "?" }, plugin_data));
     }
     if let Some(branch_data) = &query.branch_data {
-        params.insert("branch_data", branch_data.clone());
+        url.push_str(&format!("{}branch_data={}", if url.contains('?') { "&" } else { "?" }, branch_data));
     }
+
+    // Print the full URL and parameters
+    println!("\n=== Figma API Request ===");
+    println!("URL: {}", url);
+    println!("Headers: X-Figma-Token: {}", token);
+    println!("=======================\n");
 
     // Make the API request to Figma
     let response = match client
         .get(url)
-        .query(&params)
         .header("X-Figma-Token", &token)
         .send()
         .await {
@@ -98,23 +102,26 @@ pub async fn get_file(
             }),
         };
 
+    // Store status code before consuming response
+    let status = response.status();
+
+    // Get raw response
+    let raw_response = match response.text().await {
+        Ok(text) => text,
+        Err(e) => format!("Failed to read response: {}", e),
+    };
+
     // Check status code
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = match response.text().await {
-            Ok(text) => text,
-            Err(_) => "Could not read error response".to_string(),
-        };
-        
+    if !status.is_success() {
         return HttpResponse::build(status).json(ApiResponse {
-            message: format!("Figma API error: {}", error_text),
+            message: format!("Figma API error: {}", raw_response),
             status: "error".to_string(),
             data: None,
         });
     }
 
     // Parse JSON response
-    match response.json::<serde_json::Value>().await {
+    match serde_json::from_str::<serde_json::Value>(&raw_response) {
         Ok(json_data) => {
             HttpResponse::Ok().json(ApiResponse {
                 message: format!("Successfully retrieved Figma file: {}", file_key),
