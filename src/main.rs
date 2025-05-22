@@ -4,6 +4,7 @@ use actix_web::middleware::Logger;
 
 mod auth;
 mod db;
+mod figma;
 mod mongo; 
 mod models;
 mod services;
@@ -33,7 +34,7 @@ async fn main() -> io::Result<()> {
             .app_data(web::Data::new(mongodb.clone()))
             .service(
                 web::scope("/api")
-                    .service(web::scope("/services").configure(services::routes::config))
+                    .service(web::scope("/figma").configure(figma::routes::config))
                     .service(web::scope("/mongo").configure(mongo::routes::config))
             )
     })
