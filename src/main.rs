@@ -6,9 +6,6 @@ mod auth;
 mod db;
 mod figma;
 mod mongo; 
-mod models;
-mod services;
-mod repositories;
 
 use auth::middleware::FigmaTokenMiddleware;
 
