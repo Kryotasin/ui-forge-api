@@ -64,6 +64,35 @@ impl MongoDb {
         
         Ok(MongoDb { client, database })
     }
+
+    pub async fn insert_into_collection<T>(
+        &self,
+        collection_name: &str,
+        document: T,
+    ) -> Result<(), mongodb::error::Error> 
+    where
+        T: serde::Serialize + Send + Sync,
+    {
+        let collection = self.database.collection(collection_name);
+        let res = collection.insert_one(document).await?;
+        println!("Inserted a document into {}", res.inserted_id);
+        Ok(())
+    }
+
+    pub async fn get_document_from_collection<T>(
+        &self,
+        collection_name: &str,
+        filter: mongodb::bson::Document,
+    ) -> Result<Option<T>, mongodb::error::Error> 
+    where 
+        T: serde::de::DeserializeOwned + Send + Sync,
+    {
+        let collection = self.database.collection(collection_name);
+        let document = collection.find_one(filter).await?;
+        Ok(document)
+    }
+    
+    
     
     // This method will be used in the future as your app grows
     #[allow(dead_code)]

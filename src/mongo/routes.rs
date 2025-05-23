@@ -21,9 +21,15 @@ impl MongoDb {
             Err(_) => {
                 // Get username and password from environment variables
                 let username = env::var("MONGODB_USERNAME")
-                    .unwrap_or_else(|_| "kshitijsinha2023".to_string());
+                    .map_err(|_| mongodb::error::Error::from(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "MONGODB_USERNAME environment variable is required"
+                    )))?;
                 let password = env::var("MONGODB_PASSWORD")
-                    .unwrap_or_else(|_| "xpYjAqVbLe6KEXOJ".to_string());
+                    .map_err(|_| mongodb::error::Error::from(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "MONGODB_PASSWORD environment variable is required"
+                    )))?;
                 
                 // Build the connection string with username and password
                 format!(
@@ -82,6 +88,22 @@ pub async fn ping(db: web::Data<crate::db::mongo::MongoDb>) -> impl Responder {
     }
 }
 
+#[get("/get-file-by-key/{file_key}")]
+pub async fn get_file_by_key(
+    db: web::Data<crate::db::mongo::MongoDb>,
+    file_key: web::Path<String>,
+) -> impl Responder {
+    let file_key_str = file_key.into_inner();
+    let filter = doc! { "file_key": file_key_str };
+    
+    match db.get_document_from_collection::<serde_json::Value>("figma_file", filter).await {
+        Ok(Some(document)) => HttpResponse::Ok().json(document),
+        Ok(None) => HttpResponse::NotFound().json("File not found"),
+        Err(e) => HttpResponse::InternalServerError().json(format!("Database error: {}", e))
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(ping);
+    cfg.service(ping)
+       .service(get_file_by_key);
 }

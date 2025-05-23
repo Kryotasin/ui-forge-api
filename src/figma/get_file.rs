@@ -2,6 +2,7 @@ use actix_web::{get, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use reqwest::Client;
+use mongodb::Client as MongoClient;
 
 // Struct for query parameters
 #[derive(Deserialize)]
@@ -18,6 +19,7 @@ pub struct FileParams {
 // Struct for returning response
 #[derive(Serialize)]
 pub struct ApiResponse {
+    file_key: String,
     message: String,
     status: String,
     data: Option<serde_json::Value>,
@@ -28,18 +30,21 @@ pub struct ApiResponse {
 pub async fn get_file(
     req: HttpRequest,
     query: web::Query<FileParams>,
+    db: web::Data<crate::db::mongo::MongoDb>,
 ) -> impl Responder {
     // Check for X-Figma-Token header
     let token = match req.headers().get("X-Figma-Token") {
         Some(token_header) => match token_header.to_str() {
             Ok(token_str) => token_str.to_string(),
             Err(_) => return HttpResponse::BadRequest().json(ApiResponse {
+                file_key: "".to_string(),
                 message: "Invalid token format".to_string(),
                 status: "error".to_string(),
                 data: None,
             }),
         },
-        None => return HttpResponse::Unauthorized().json(ApiResponse {
+        None => return HttpResponse::Unauthorized().json(ApiResponse {  
+            file_key: "".to_string(),
             message: "Missing X-Figma-Token header".to_string(),
             status: "error".to_string(),
             data: None,
@@ -50,6 +55,7 @@ pub async fn get_file(
     let file_key = match &query.file_key {
         Some(id) => id.clone(),
         None => return HttpResponse::BadRequest().json(ApiResponse {
+            file_key: "".to_string(),
             message: "Missing file_key parameter".to_string(),
             status: "error".to_string(),
             data: None,
@@ -92,6 +98,7 @@ pub async fn get_file(
         .await {
             Ok(resp) => resp,
             Err(e) => return HttpResponse::InternalServerError().json(ApiResponse {
+                file_key: "".to_string(),
                 message: format!("Failed to call Figma API: {}", e),
                 status: "error".to_string(),
                 data: None,
@@ -108,6 +115,7 @@ pub async fn get_file(
         };
         
         return HttpResponse::build(status).json(ApiResponse {
+            file_key: "".to_string(),
             message: format!("Figma API error: {}", error_text),
             status: "error".to_string(),
             data: None,
@@ -117,14 +125,24 @@ pub async fn get_file(
     // Parse JSON response directly (more efficient - single step)
     match response.json::<serde_json::Value>().await {
         Ok(json_data) => {
-            HttpResponse::Ok().json(ApiResponse {
+            // Create the API response
+            let api_response = ApiResponse {
+                file_key: file_key.clone(),
                 message: format!("Successfully retrieved Figma file: {}", file_key),
                 status: "success".to_string(),
-                data: Some(json_data),
-            })
+                data: Some(json_data.clone()),
+            };
+
+            // Store the response in MongoDB
+            if let Err(e) = db.insert_into_collection("figma_file", &api_response).await {
+                eprintln!("Failed to store response in MongoDB: {}", e);
+            }
+
+            HttpResponse::Ok().json(api_response)
         },
         Err(e) => {
             HttpResponse::InternalServerError().json(ApiResponse {
+                file_key: "".to_string(),
                 message: format!("Failed to parse Figma API response: {}", e),
                 status: "error".to_string(),
                 data: None,
