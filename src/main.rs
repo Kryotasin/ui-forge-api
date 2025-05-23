@@ -1,13 +1,15 @@
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, web, guard};
 use std::io;
 use actix_web::middleware::Logger;
 
 mod auth;
 mod db;
 mod figma;
-mod mongo; 
+mod mongo;
+mod graphql;
 
 use auth::middleware::FigmaTokenMiddleware;
+use graphql::handler::{graphql_handler, graphql_playground};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -23,14 +25,29 @@ async fn main() -> io::Result<()> {
         }
     };
     
+    // Build GraphQL schema
+    let schema = graphql::build_schema();
+    
     println!("Starting server at http://127.0.0.1:8080");
+    println!("GraphQL Playground available at http://127.0.0.1:8080/api/graphql");
     
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .app_data(web::Data::new(mongodb.clone()))
+            .app_data(web::Data::new(schema.clone()))
             .service(
                 web::scope("/api")
+                    .service(
+                        web::resource("/graphql")
+                            .guard(guard::Post())
+                            .to(graphql_handler)
+                    )
+                    .service(
+                        web::resource("/graphql")
+                            .guard(guard::Get())
+                            .to(graphql_playground)
+                    )
                     .service(web::scope("/figma").configure(figma::routes::config))
                     .service(web::scope("/mongo").configure(mongo::routes::config))
             )
