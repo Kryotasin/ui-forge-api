@@ -23,7 +23,7 @@ impl MongoDb {
                 let username = env::var("MONGODB_USERNAME")
                     .unwrap_or_else(|_| "kshitijsinha2023".to_string());
                 let password = env::var("MONGODB_PASSWORD")
-                    .unwrap_or_else(|_| "xpYjAqVbLe6KEXOJ".to_string());
+                    .unwrap_or_else(|_| "xpYjAqVbLe6KEXOJ".to_string()); //TODO: Remove this
                 
                 // Build the connection string with username and password
                 format!(
