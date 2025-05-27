@@ -103,7 +103,24 @@ pub async fn get_file_by_key(
     }
 }
 
+#[get("/get-node/{file_key}/{node_id}")]
+pub async fn get_node_by_id(
+    db: web::Data<crate::db::mongo::MongoDb>,
+    path: web::Path<(String, String)>,
+) -> impl Responder {
+    let (file_key_str, node_id_str) = path.into_inner();
+    let filter = doc! { "file_key": file_key_str, "node_id": node_id_str };
+    println!("Filter: {:?}", filter);
+    
+    match db.get_document_from_collection::<serde_json::Value>("figma_nodes", filter).await {
+        Ok(Some(document)) => HttpResponse::Ok().json(document),
+        Ok(None) => HttpResponse::NotFound().json("Node not found"),
+        Err(e) => HttpResponse::InternalServerError().json(format!("Database error: {}", e))
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(ping)
-       .service(get_file_by_key);
+       .service(get_file_by_key)
+       .service(get_node_by_id);
 }

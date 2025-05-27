@@ -15,6 +15,7 @@ pub struct NodeParams {
 #[derive(Serialize)]
 pub struct ApiResponse {
     file_key: String,
+    node_id: String,
     message: String,
     status: String,
     data: Option<serde_json::Value>,
@@ -33,6 +34,7 @@ pub async fn get_node(
             Ok(token_str) => token_str.to_string(),
             Err(_) => return HttpResponse::BadRequest().json(ApiResponse {
                 file_key: "".to_string(),
+                node_id: "".to_string(),
                 message: "Invalid token format".to_string(),
                 status: "error".to_string(),
                 data: None,
@@ -40,6 +42,7 @@ pub async fn get_node(
         },
         None => return HttpResponse::Unauthorized().json(ApiResponse {  
             file_key: "".to_string(),
+            node_id: "".to_string(),
             message: "Missing X-Figma-Token header".to_string(),
             status: "error".to_string(),
             data: None,
@@ -51,6 +54,7 @@ pub async fn get_node(
         Some(id) => id.clone(),
         None => return HttpResponse::BadRequest().json(ApiResponse {
             file_key: "".to_string(),
+            node_id: "".to_string(),
             message: "Missing file_key parameter".to_string(),
             status: "error".to_string(),
             data: None,
@@ -62,6 +66,7 @@ pub async fn get_node(
         Some(ids) => ids.clone(),
         None => return HttpResponse::BadRequest().json(ApiResponse {
             file_key: "".to_string(),
+            node_id: "".to_string(),
             message: "Missing ids parameter".to_string(),
             status: "error".to_string(),
             data: None,
@@ -76,7 +81,7 @@ pub async fn get_node(
     
     // Build query parameters using HashMap
     let mut params = HashMap::new();
-    params.insert("ids", ids);
+    params.insert("ids", ids.clone());
 
     // Make the API request to Figma
     let response = match client
@@ -88,6 +93,7 @@ pub async fn get_node(
             Ok(resp) => resp,
             Err(e) => return HttpResponse::InternalServerError().json(ApiResponse {
                 file_key: "".to_string(),
+                node_id: ids.clone(),
                 message: format!("Failed to call Figma API: {}", e),
                 status: "error".to_string(),
                 data: None,
@@ -105,6 +111,7 @@ pub async fn get_node(
         
         return HttpResponse::build(status).json(ApiResponse {
             file_key: "".to_string(),
+            node_id: ids.clone(),
             message: format!("Figma API error: {}", error_text),
             status: "error".to_string(),
             data: None,
@@ -117,6 +124,7 @@ pub async fn get_node(
             // Create the API response
             let api_response = ApiResponse {
                 file_key: file_key.clone(),
+                node_id: ids.clone(),
                 message: format!("Successfully retrieved Figma nodes for file: {}", file_key),
                 status: "success".to_string(),
                 data: Some(json_data.clone()),
@@ -132,6 +140,7 @@ pub async fn get_node(
         Err(e) => {
             HttpResponse::InternalServerError().json(ApiResponse {
                 file_key: "".to_string(),
+                node_id: ids.clone(),
                 message: format!("Failed to parse Figma API response: {}", e),
                 status: "error".to_string(),
                 data: None,
