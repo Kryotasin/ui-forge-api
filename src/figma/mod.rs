@@ -2,3 +2,4 @@
 pub mod routes;
 pub mod echo;
 pub mod get_file;
+pub mod get_node;
