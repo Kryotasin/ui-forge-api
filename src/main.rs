@@ -1,6 +1,7 @@
 use actix_web::{App, HttpServer, web, guard};
 use std::io;
 use actix_web::middleware::Logger;
+use actix_cors::Cors;
 
 mod auth;
 mod db;
@@ -32,8 +33,16 @@ async fn main() -> io::Result<()> {
     println!("GraphQL Playground available at http://127.0.0.1:8080/api/graphql");
     
     HttpServer::new(move || {
+        // Create CORS middleware
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
+
         App::new()
             .wrap(Logger::default())
+            .wrap(cors)  // Add CORS middleware
             .app_data(web::Data::new(mongodb.clone()))
             .app_data(web::Data::new(schema.clone()))
             .service(

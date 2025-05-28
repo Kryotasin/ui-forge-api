@@ -6,7 +6,7 @@ pub struct FigmaFile {
     pub file_key: String,
     pub message: String,
     pub status: String,
-    pub data: Option<FigmaData>,
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -31,7 +31,7 @@ pub struct Document {
     pub name: String,
     #[graphql(name = "type")]
     pub node_type: String,
-    pub children: Option<Vec<serde_json::Value>>,
+    pub children: Option<Vec<Document>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
