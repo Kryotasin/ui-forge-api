@@ -41,6 +41,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         file_key: String,
     ) -> Result<Option<serde_json::Value>> {
+        println!("File key: {:?}", file_key);
         let db = ctx.data::<MongoDb>()?;
         
         let filter = doc! { "file_key": &file_key };
