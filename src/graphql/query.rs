@@ -42,12 +42,13 @@ impl QueryRoot {
         file_key: String,
     ) -> Result<Option<serde_json::Value>> {
         println!("File key: {:?}", file_key);
+        
         let db = ctx.data::<MongoDb>()?;
         
         let filter = doc! { "file_key": &file_key };
         
         let document: Option<FigmaFileDocument> = db
-            .get_document_from_collection("figma_file", filter)
+            .get_document_from_collection("figma_nodes", filter)
             .await
             .map_err(|e| Error::new(format!("Database error: {}", e)))?;
         
