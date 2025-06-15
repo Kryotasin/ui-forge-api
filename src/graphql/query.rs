@@ -40,12 +40,18 @@ impl QueryRoot {
         &self,
         ctx: &Context<'_>,
         file_key: String,
+        node_id: String,
     ) -> Result<Option<serde_json::Value>> {
         println!("File key: {:?}", file_key);
+        println!("Node ID: {:?}", node_id);
         
         let db = ctx.data::<MongoDb>()?;
         
-        let filter = doc! { "file_key": &file_key };
+        // Option 1: Filter by both file_key and node_id
+        let filter = doc! { 
+            "file_key": &file_key,
+            "node_id": &node_id 
+        };
         
         let document: Option<FigmaFileDocument> = db
             .get_document_from_collection("figma_nodes", filter)
