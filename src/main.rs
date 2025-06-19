@@ -8,6 +8,7 @@ mod db;
 mod figma;
 mod mongo;
 mod graphql;
+mod generator;
 
 use auth::middleware::FigmaTokenMiddleware;
 use graphql::handler::{graphql_handler, graphql_playground};
@@ -59,6 +60,8 @@ async fn main() -> io::Result<()> {
                     )
                     .service(web::scope("/figma").configure(figma::routes::config))
                     .service(web::scope("/mongo").configure(mongo::routes::config))
+                    .service(web::scope("/generator").configure(generator::configure_routes))
+
             )
     })
     .bind(("127.0.0.1", 8080))?
